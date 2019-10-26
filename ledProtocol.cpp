@@ -5,7 +5,22 @@ void initLedComm(unsigned short nLEDs)
 
 }
 
-void SetAllLEDs(struct CRGB)
+void SetAllLEDs(struct CRGB &rgb)
 {
-	FastLED.fill_solid();
+	//fill_solid(leds, NUM_LEDS, rgb);
 }
+
+
+
+// Definition of a full strip color cycle with constant delay
+cycleDef::cycleDef(unsigned short newCount)
+{
+colors = new CHSV[newCount];
+count = newCount;
+}
+
+cycleDef::~cycleDef()
+{
+free(colors);
+}
+

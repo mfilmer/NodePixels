@@ -1,19 +1,22 @@
 #include "ledServer.h"
 
-CRGB leds[NUM_LEDS];
+#define NUM_LEDS 300
+
+static const unsigned long timeout = 100;
+
 
 // Initialize LED server
-// Must be called once before anything else is done
+// Must be called once before anything else
 void initLEDServer(int numLEDs)
 {
-  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, numLEDs);
-  FastLED.setBrightness(10);
+  initAnimations(NUM_LEDS);
 }
 
-// Check if the server received commands
-void checkForCommands(WiFiServer server)
+// Check if the server received client commands
+// Returns true if a message was handled
+bool ProcessServerMessages(WiFiServer server)
 {
-
+  WiFiClient client;
   if (client = server.available()) {
     char buff[BUFFLEN];
     readline(client, buff, timeout);
@@ -21,7 +24,9 @@ void checkForCommands(WiFiServer server)
     parseCommand(client, buff);
 
     client.stop();
+    return true;
   }
+  return false;
 }
 
 // Read a line from the client
@@ -46,45 +51,76 @@ unsigned int readline(WiFiClient client, char* buffer, unsigned long timeout)
   return i;
 }
 
+
+
+
+struct CycleDef* parseCycle(char* buff)
+{
+  // Minimum size is 10 bytes for a 2 color cycle
+  unsigned short nChars = strlen(buff);
+  if (nChars <= 10) {
+    return 0;
+  }
+
+  // Size must be nColors * 3 + 4
+  unsigned short nColors = buff[1];
+  if (nChars != nColors * 3 + 4) {
+    return 0;
+  }
+
+  unsigned int delay = buff[2];
+  delay = delay << 8;
+  delay = delay + buff[3];
+
+  CycleDef cycleDef = new CycleDef(nColors);
+  cycleDef.delay = delay;
+
+  for (int i = 0;i < nColors;i++) {
+    cycleDef.colors[i] = CRGB();
+  }
+
+  return cycleDef;
+}
+
 // Parse a command and call the related function
 void parseCommand(WiFiClient client, char* buff)
 {
+  // Process new style commands
   switch (buff[0]) {
-    case FULL_STRING_HSV_CHAR:
+    case FULL_STRING_HSV_BYTE:
       // Verify that buff is long enough
       if (strlen(buff) == 4) {
-        //Serial.println("Setting HSV");
-        struct HSV hsv;
-        hsv.H = buff[1];
-        hsv.S = buff[2];
-        hsv.V = buff[3];
-        SetSingleColor(&hsv);
+        CHSV chsv(buff[1], buff[2], buff[3]);
+        SetSingleColor(chsv);
         client.print("ack\n");
         return;
       }
       break;
-    case FULL_STRING_RGB_CHAR:
+    case FULL_STRING_RGB_BYTE:
       // Verify that buff is long enough
       if (strlen(buff) == 4) {
-        //Serial.println("Setting RGB");
-        struct RGB rgb;
-        rgb.R = buff[1];
-        rgb.G = buff[2];
-        rgb.B = buff[3];
-        SetSingleColor(&rgb);
+        CRGB crgb(buff[1], buff[2], buff[3]);
+        SetSingleColor(crgb);
         client.print("ack\n");
         return;
       }
       break;
-      case BRIGHTNESS_CHAR:
+      case SET_BRIGHTNESS_BYTE:
       // Verify buff is right length
       if (strlen(buff) == 2) {
         SetBrightness(buff[1]);
         client.print("ack\n");
         return;
       }
+      case FULL_CYCLE_N_BYTE:
+      // next 2 bytes are number of colors
+      // 2 bytes after that are delay in ms
+      // Then each 3 byte sequence is a color in RGB
       break;
   }
+
+/*
+  // Handle remaining old style commands
   if (strcmp(buff, "start") == 0) {
     Serial.println("Starting");
     StartTestAnimation();
@@ -116,6 +152,7 @@ void parseCommand(WiFiClient client, char* buff)
     client.print("message not recognized\n");
     return;
   }
+  */
 
   client.print("ack\n");
 }

@@ -6,8 +6,6 @@
 
 #define FASTLED_ESP8266_NODEMCU_PIN_ORDER
 #include <FastLED.h>
-#define NUM_LEDS 300
-#define DATA_PIN 3
 
 #include "FastAnimations.h"
 #include "ledProtocol.h"
@@ -18,5 +16,6 @@
 void initLEDServer(int numLEDs);
 unsigned int readline(WiFiClient client, char* buffer, unsigned long timeout);
 void parseCommand(WiFiClient client, char* buff);
+bool ProcessServerMessages(WiFiServer server);
 
 #endif

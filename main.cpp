@@ -9,63 +9,66 @@
 #include "FastAnimations.h"
 #include "ledServer.h"
 
-#define DEBUG_MODE
-#ifdef DEBUG_MODE
-#define DEBUG(commands) commands
-#else
-#define DEBUG(commands)
-#endif
+/***** Private function prototypes *****/
+static void setWiFiEventHandlers();
 
 
+/***** Global variables *****/
+static WiFiEventHandler gotIpEventHandler, disconnectedEventHandler;
+static WiFiServer server(28924);
 
-WiFiEventHandler gotIpEventHandler, disconnectedEventHandler;
-WiFiServer server(28924);
 
-const unsigned long timeout = 1000;
-
-bool calledFlag = false;
-
-void connectToWiFi()
-{
-  const char* ssid = "SpaceCrusher 2.4";
-  const char* password = "";
-  WiFi.begin(ssid, password);
-}
-
+// Main setup function
 void setup()
 {
   Serial.begin(115200);
-  DEBUG(Serial.println("\nStarted!");)
+  Serial.println("\nStarted!");
 
   // Uncomment if we need to change the wifi network settings
   //connectToWiFi();
 
-  // Register wifi connect and disconnect handlers
+  setWiFiEventHandlers();
+
+  initLEDServer(NUM_LEDS);
+}
+
+
+// Main loop
+void loop()
+{
+  // Process messages from clients
+  ProcessServerMessages(server);
+
+  // Update LEDs
+  ServiceAnimation();
+}
+
+
+// Set up the wifi connect/disconnect event handlers
+// The connct handler needs to restart the server
+static void setWiFiEventHandlers()
+{
   gotIpEventHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event)
   {
-    DEBUG(Serial.print("Station connected, IP: ");)
-    DEBUG(Serial.println(WiFi.localIP());)
-    DEBUG(Serial.println("Starting server");)
+    Serial.print("Station connected, IP: ");
+    Serial.println(WiFi.localIP());
+    Serial.println("Starting server");
 
     server.begin();
   });
 
   disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event)
   {;
-    DEBUG(Serial.println("Station disconnected");)
-    // Clean up any server memory that needs to be freed
+    Serial.println("Station disconnected");
   });
-
-
-  initLEDServer(NUM_LEDS);
 }
 
 
-void loop()
+// Connect to a wifi network
+// Probably going to need an ssid and password
+static void connectToWiFi()
 {
-  // Process messages from clients
-  checkForCommands(server);
-
-  // Update LEDs
-  ServiceAnimation();
+  const char* ssid = "";
+  const char* password = "";
+  WiFi.begin(ssid, password);
 }
