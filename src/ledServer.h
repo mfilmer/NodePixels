@@ -9,13 +9,12 @@
 
 #include "FastAnimations.h"
 #include "ledProtocol.h"
-
-#define BUFFLEN 128
+#include "messages.h"
 
 
 void initLEDServer(int numLEDs);
-unsigned int readline(WiFiClient client, char* buffer, unsigned long timeout);
-void parseCommand(WiFiClient client, char* buff);
-bool ProcessServerMessages(WiFiServer server);
+unsigned int readline(WiFiClient &client, char* buffer, unsigned long timeout);
+void parseCommand(WiFiClient &client, Message* message);
+bool ProcessServerMessages(WiFiServer &server);
 
 #endif

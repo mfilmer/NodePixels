@@ -3,19 +3,24 @@
 #define DATA_PIN 3
 
 /***** Private function prototypes *****/
-void printHSV(struct CHSV &hsv);
-void printRGB(struct CRGB &rgb);
+static void printHSV(struct CHSV &hsv);
+static void printRGB(struct CRGB &rgb);
+static void stopAnimation();
 
+/***** Animation functions *****/
+static void cycleAnimation();
 
 /***** Private variables  ****/
 static struct CRGB* leds = 0;
 static unsigned int numLEDs;
 static Ticker ticker;
 static bool sequenceUpdateReady = false;
-static char buff[128];
+static char buff[32];
 
 
-void (*animStepFcn) () = 0;
+static void (*animStepFcn) () = 0;
+static CycleDef cycleDef;
+
 
 
 void initAnimations(unsigned int newNumLEDs)
@@ -39,7 +44,7 @@ void ICACHE_RAM_ATTR cycle_ISR()
 // Turn all the LEDs off
 void LEDsOFf()
 {
-  ticker.detach();
+  stopAnimation();
   FastLED.clear();
   FastLED.show();
   ticker.detach();
@@ -49,6 +54,9 @@ void LEDsOFf()
 // Set the overall brightness scaling factor
 void SetBrightness(unsigned int brightness)
 {
+  char str[32];
+  sprintf(str, "Bright: %d", brightness);
+  Serial.println(str);
   FastLED.setBrightness(brightness);
   FastLED.show();
 }
@@ -57,27 +65,50 @@ void SetBrightness(unsigned int brightness)
 // Set the whole strip to one color
 void SetSingleColor(struct CRGB &rgb)
 {
-  ticker.detach();
+  stopAnimation();
   printRGB(rgb);
   fill_solid(leds, numLEDs, rgb);
   FastLED.show();
 }
 void SetSingleColor(struct CHSV &hsv)
 {
-  ticker.detach();
+  stopAnimation();
   printHSV(hsv);
   fill_solid(leds, numLEDs, hsv);
   FastLED.show();
 }
 
 
+// Cycle through whole strip colors
+void SetCycle(CycleDef *newCycleDef)
+{
+  // Stop whatever is currently running
+  stopAnimation();
+
+  // Store this cycle def
+  cycleDef = *newCycleDef;
+
+  // Fill in first sequence and show it
+  fill_solid(leds, numLEDs, cycleDef.next());
+  FastLED.show();
+
+  // Start the animation
+  animStepFcn = cycleAnimation;
+  ticker.attach_ms(cycleDef.delay, cycle_ISR);
+
+  // Fill in next step. I think this should improve timing a bit
+  fill_solid(leds, numLEDs, cycleDef.next());
+}
 
 
 // Called by the user to advance the sequence to the next step
 void ServiceAnimation()
 {
+  Serial.println("Service Animation Start");
+
   // Verify an update is needed, return if its not
   if (!sequenceUpdateReady) {
+    Serial.println("Animation not serviced");
     return;
   }
 
@@ -88,94 +119,39 @@ void ServiceAnimation()
 
   // Indicate that update is no longer ready
   sequenceUpdateReady = false;
+
+  Serial.println("Animation successfully serviced");
 }
+
 
 /***** Private Functions *****/
 // Print the given HSV to the serial port
 // Serial must already be initialized for this to work
-void printHSV(struct CHSV &hsv)
+static void printHSV(struct CHSV &hsv)
 {
   sprintf(buff, "H: %d, S: %d, V: %d\n", hsv.h, hsv.s, hsv.v);
   Serial.print(buff);
 }
 
-void printRGB(struct CRGB &rgb)
+static void printRGB(struct CRGB &rgb)
 {
   sprintf(buff, "R: %d, G: %d, B: %d\n", rgb.r, rgb.g, rgb.b);
   Serial.print(buff);
 }
 
-
-
-
-
-
-
-
-
-/*
-
-
-void testStepFcn()
+// Disable the animation callback and ticker
+static void stopAnimation()
 {
-  if(leds[stepInd].r==0 && leds[stepInd].g==0 && leds[stepInd].b==0) {
-    leds[stepInd] = CRGB::Red;
-  } else {
-    leds[stepInd].r = 0;
-    leds[stepInd].g = 0;
-    leds[stepInd].b = 0;
-  }
+  ticker.detach();
+  animStepFcn = 0;
+}
+
+/***** Animation functions *****/
+static void cycleAnimation()
+{
+  // Show the already populated leds
   FastLED.show();
 
-  stepInd = modAdd(stepInd, (unsigned short) 1, stop);
+  // Populate the next set
+  //fill_solid(leds, numLEDs, cycleDef.next());
 }
-
-
-
-void StartTestAnimation()
-{
-  ticker.detach();
-  ticker.attach_ms(50,testStepFcn);
-}
-
-
-// Set a new animation
-void SetAnimation(struct LEDStripColors* ledStripColors)
-{
-
-}
-
-
-// Pause the animation but keep the leds lit as they currently are
-void PauseAnimation()
-{
-  ticker.detach();
-}
-
-
-// Resume the animation
-void ResumeAnimation()
-{
-  // TODO: properly include the delay
-  ticker.attach_ms(1000,cycle_ISR);
-}
-
-// Advance the entire animation by one step
-void animationTick(struct LEDStripColors ledStripColors)
-{
-
-}
-
-// Returns true if advancing caused a roll over and the parent
-// animation needs to also advance
-bool advanceAnimation(enum AnimType animType, void* anim)
-{
-  switch (animType) {
-    case ANIM_SINGLE:
-      return true;
-    case ANIM_RING:
-      break;
-  }
-}
-
-*/

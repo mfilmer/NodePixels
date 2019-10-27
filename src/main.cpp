@@ -23,6 +23,10 @@ void setup()
 {
   Serial.begin(115200);
   Serial.println("\nStarted!");
+  uint32_t id = system_get_chip_id();
+  char buff[64];
+  sprintf(buff, "ID: %d", id);
+  Serial.println(buff);
 
   // Uncomment if we need to change the wifi network settings
   //connectToWiFi();
@@ -40,7 +44,9 @@ void loop()
   ProcessServerMessages(server);
 
   // Update LEDs
-  ServiceAnimation();
+  //ServiceAnimation();
+
+  delay(100);
 }
 
 

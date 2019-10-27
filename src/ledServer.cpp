@@ -1,8 +1,16 @@
+/** @file */ 
+
 #include "ledServer.h"
 
+#define BUFFLEN 32
 #define NUM_LEDS 300
+#define TIMEOUT 100
 
-static const unsigned long timeout = 100;
+/***** Private functions *****/
+CycleDef* parseCycle(char* buff);
+static MessageType readMessage(WiFiClient &client, Message *message);
+static inline bool readByte(WiFiClient &client, char* bytes, unsigned int timeout);
+static bool readBytes(WiFiClient &client, char* bytes, unsigned int nBytes, unsigned int timeout);
 
 
 // Initialize LED server
@@ -12,16 +20,19 @@ void initLEDServer(int numLEDs)
   initAnimations(NUM_LEDS);
 }
 
-// Check if the server received client commands
-// Returns true if a message was handled
-bool ProcessServerMessages(WiFiServer server)
+/*
+ * @brief Checks and processes client commands
+ *
+ * Returns true if a message was handled
+ */
+bool ProcessServerMessages(WiFiServer &server)
 {
   WiFiClient client;
   if (client = server.available()) {
-    char buff[BUFFLEN];
-    readline(client, buff, timeout);
-
-    parseCommand(client, buff);
+    Message message;
+    MessageType type = readMessage(client, &message);
+    if (type)
+      parseCommand(client, &message);
 
     client.stop();
     return true;
@@ -29,33 +40,109 @@ bool ProcessServerMessages(WiFiServer server)
   return false;
 }
 
-// Read a line from the client
-unsigned int readline(WiFiClient client, char* buffer, unsigned long timeout)
+
+/*
+ * @brief Read a single byte from the client
+ */
+static inline bool readByte(WiFiClient &client, char *byte, unsigned int timeout)
+{
+  return readBytes(client, byte, 1, timeout);
+}
+
+
+/*
+ * @brief Read a specified number of bytes from the client
+ */
+static bool readBytes(WiFiClient &client, char* bytes, unsigned int nBytes, unsigned int timeout)
 {
   unsigned long currentTime = millis();
   unsigned long startTime = currentTime;
   unsigned int i = 0;
-  while (client.connected() && currentTime - startTime < timeout && i < BUFFLEN-1) {
+  while (client.connected() && currentTime - startTime < TIMEOUT && i < nBytes) {
     if(client.available()) {
-      char c = client.read();
-      if (c == '\n') 
-        break;
-      buffer[i] = c;
-      i = i + 1;
+      bytes[i] = client.read();
+      i++;
     }
-
     currentTime = millis();
   }
 
-  buffer[i] = 0;
-  return i;
+  if (i == nBytes) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+
+/**
+ * @brief Read a message from the client
+ */
+static MessageType readMessage(WiFiClient &client, Message *message)
+{
+  unsigned long currentTime = millis();
+  unsigned long startTime = currentTime;
+
+  message->type = NULL_MSG;
+
+  // Read first byte (message type)
+  readByte(client, &message->type, TIMEOUT);
+
+  // If we didn't get a real message, give up and return
+  if (message->type == NULL_MSG) {
+    client.flush();
+    client.stop();
+    return NULL_MSG;
+  }
+
+
+  // Determine expected remaining byte count
+  unsigned int nExpBytes = 0;
+  switch (message->type) {
+    case BRIGHTNESS_MSG:
+      nExpBytes = 1;
+      break;
+    case FULL_STRING_MSG:
+      nExpBytes = 3;
+      break;
+    case FULL_CYCLE_N_MSG:
+    {
+      char count = 0;
+      bool gotCount = readByte(client, &count, TIMEOUT);
+      if (gotCount) {
+        nExpBytes = 2 + 3*gotCount;
+      }
+      break;
+    }
+  }
+
+  char *bytes = new char[nExpBytes];
+  bool gotBytes = readBytes(client, bytes, nExpBytes, TIMEOUT);
+  if (gotBytes) {
+    // Good message. Assemble and return the message type
+    message->len = nExpBytes;
+    message->bytes = bytes;
+    return message->type;
+  } else {
+    // Corrupt message. Cleanup memory and NULL_MSG
+    delete bytes;
+    return NULL_MSG;
+  }
+
 }
 
 
 
 
-struct CycleDef* parseCycle(char* buff)
+/**
+ * @brief Parse a color cycle command
+ *
+ * Returns a CycleDef object that will need to be manually deleted
+ * when it is no longer needed
+ */
+CycleDef* parseCycle(char* buff)
 {
+  Serial.println("Parsing cycle...");
+
   // Minimum size is 10 bytes for a 2 color cycle
   unsigned short nChars = strlen(buff);
   if (nChars <= 10) {
@@ -72,51 +159,47 @@ struct CycleDef* parseCycle(char* buff)
   delay = delay << 8;
   delay = delay + buff[3];
 
-  CycleDef cycleDef = new CycleDef(nColors);
-  cycleDef.delay = delay;
+  CycleDef *cycleDef = new CycleDef(nColors);
+  cycleDef->delay = delay;
 
   for (int i = 0;i < nColors;i++) {
-    cycleDef.colors[i] = CRGB();
+    unsigned short start = 4 + i*3;
+    cycleDef->colors[i] = CRGB(buff[start], buff[start+1], buff[start+2]);
   }
 
   return cycleDef;
 }
 
 // Parse a command and call the related function
-void parseCommand(WiFiClient client, char* buff)
+void parseCommand(WiFiClient &client, Message* msg)
 {
+  Serial.println("Parsing command");
   // Process new style commands
-  switch (buff[0]) {
-    case FULL_STRING_HSV_BYTE:
-      // Verify that buff is long enough
-      if (strlen(buff) == 4) {
-        CHSV chsv(buff[1], buff[2], buff[3]);
-        SetSingleColor(chsv);
-        client.print("ack\n");
-        return;
+  switch (msg->type) {
+    case FULL_STRING_MSG:
+    {
+      Serial.println("Full string message");
+      CRGB crgb(msg->bytes[0], msg->bytes[1], msg->bytes[2]);
+      SetSingleColor(crgb);
+      client.print("ack\n");
+      return;
+    }
+    case BRIGHTNESS_MSG:
+      Serial.println("Brightness message");
+      SetBrightness(msg->bytes[0]);
+      client.print("ack\n");
+      return;
+    case FULL_CYCLE_N_MSG:
+    {
+      char buff[32];
+      Serial.println("Full cycle message");
+      CycleDef *cycleDef = parseCycle(buff);
+      if (cycleDef) {
+        SetCycle(cycleDef);
+        delete cycleDef;
       }
       break;
-    case FULL_STRING_RGB_BYTE:
-      // Verify that buff is long enough
-      if (strlen(buff) == 4) {
-        CRGB crgb(buff[1], buff[2], buff[3]);
-        SetSingleColor(crgb);
-        client.print("ack\n");
-        return;
-      }
-      break;
-      case SET_BRIGHTNESS_BYTE:
-      // Verify buff is right length
-      if (strlen(buff) == 2) {
-        SetBrightness(buff[1]);
-        client.print("ack\n");
-        return;
-      }
-      case FULL_CYCLE_N_BYTE:
-      // next 2 bytes are number of colors
-      // 2 bytes after that are delay in ms
-      // Then each 3 byte sequence is a color in RGB
-      break;
+    }
   }
 
 /*

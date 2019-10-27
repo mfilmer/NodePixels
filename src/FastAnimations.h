@@ -7,17 +7,21 @@
 #define FASTLED_ESP8266_NODEMCU_PIN_ORDER
 #include <FastLED.h>
 
+#include "ledProtocol.h"
+
 // Function like macros
 #define modAdd(a,b,max) {(a + b) % max}
 
 void initAnimations(unsigned int newNumLEDs);
-void ServiceAnimation();
+//void ServiceAnimation();
 
 void LEDsOff();
 void SetBrightness(unsigned int brightness);
 
 void SetSingleColor(struct CRGB &rgb);
 void SetSingleColor(struct CHSV &hsv);
+
+void SetCycle(CycleDef *newCycleDef);
 
 
 #endif

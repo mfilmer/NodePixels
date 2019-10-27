@@ -14,9 +14,12 @@
 #define HSV_BIT 6
 #define HSV_MASK (1 << HSV_BIT)
 
-#define SET_BRIGHTNESS_MSG  0b000001
-#define FULL_STRING_MSG     0b000010
-#define FULL_CYCLE_N_MSG    0b000011
+#define NULL_MSG            0b000000      // Used to indicate an error
+#define BRIGHTNESS_MSG      0b000001      // R/W    Overall system brightness
+#define FULL_STRING_MSG     0b000010      // R/W    The whole string is one color
+#define FULL_CYCLE_N_MSG    0b000011      // R/W    Constant delay cycle through full string colors
+#define MODE_MSG            0b110000      // R      The mode (single color, cycle, etc.)
+#define ID_MSG              0b100000      // R      The chip id, should be unique
 
 /***** Function like macros *****/
 #define readBit(byte) (byte & READ_MASK) >> READ_BIT
@@ -24,16 +27,27 @@
 #define messageBits(byte) byte & ~(READ_MASK | HSV_MASK)
 
 
+typedef char MessageType;
+
+
 // Definition of a full strip color cycle with constant delay
-class CycleDef {
+class CycleDef
+{
   public:
   unsigned short count;   // Number of colors to cycle though     
   unsigned int delay;     // Delay in ms between colors
-  struct CHSV* colors;    // Definition of the colors at each step
+  unsigned int index;     // Current index in the animation
+  struct CRGB* colors;    // Definition of the colors at each step
 
-  cycleDef(unsigned short newCount);
+  CycleDef();
+  CycleDef(unsigned short newCount);
 
-  ~cycleDef();
+  CycleDef(const CycleDef &oldDef);
+
+  ~CycleDef();
+
+  CRGB next();
 };
+
 
 #endif
