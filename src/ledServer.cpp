@@ -132,7 +132,6 @@ static MessageType readMessage(WiFiClient &client, Message *message)
 
 
 
-
 /**
  * @brief Parse a color cycle command
  *

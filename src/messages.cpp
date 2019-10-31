@@ -1,26 +1,46 @@
 #include "messages.h"
 
 
-
- Message::Message()
- {
- 	type = NULL_MSG;
- 	len = 0;
- 	bytes = 0;
- }
-
-
- Message::Message(const Message &oldMsg)
- {
- 	len = oldMsg.len;
- 	bytes = new char[len];
- 	memcpy(bytes, oldMsg.bytes, len);
- }
+Message::Message(char len, char* bytes)
+{
+  this->fullType = bytes[0];
+  this->len = len;
+  memcpy(this->bytes, bytes, len);
+}
 
 
+Message::~Message()
+{
+  delete this->bytes;
+}
 
- Message::~Message()
- {
- 	delete bytes;
- }
+
+char Message::readBit()
+{
+  return READBIT(this->fullType);
+}
+
+
+char Message::hsvBit()
+{
+  return HSVBIT(this->fullType);
+}
+
+
+char Message::type()
+{
+  return MSGBITS(this->fullType);
+}
+
+
+char Message::getLen()
+{
+  return this->len;
+}
+
+
+char* Message::getBytes()
+{
+  return this->bytes;
+}
 
