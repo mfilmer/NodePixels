@@ -1,7 +1,9 @@
 #ifndef __MESSAGEHANDLER_H__
 #define __MESSAGEHANDLER_H__
 
+#include <ESP8266WiFi.h>
 #include "fifo.h"
+#include "WiFiUtil.h"
 
 
 class MessageServer()
@@ -14,17 +16,14 @@ public:
 
   void service();
 
-  bool messageReady();
-  Message* nextMessage();
-
 private:
   char* host;
   unsigned int port;
-  WifiServer server;
+  WifiServer* server;
 
-  FIFO<MessageParser*>* fifo;
+  vector<MessageParser*>* fifo;
 
-  Packet receivePacket(WiFiClient &client);
+  Message* receiveMessage(WiFiClient &client);
 };
 
 
@@ -32,9 +31,6 @@ private:
 class MessageParser()
 {
 public:
-  MessageParser(bool (*checkFcn) (char* bytes, char length));
-  ~MessageParser();
-
   virtual bool checkMessage(Message *message);
   virtual Message parseMessage(Message *message);
   virtual bool handleMessage(Message* message);

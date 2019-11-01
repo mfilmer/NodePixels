@@ -10,13 +10,15 @@ MessageServer::MessageServer(char* host, unsigned int port, char queueLength)
 
   this->fifo = new FIFO(queueLength);
 
+  this->server = new WiFiServer(port);
+
   gotIpEventHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event)
   {
     Serial.print("Station connected, IP: ");
     Serial.println(WiFi.localIP());
     Serial.println("Starting server");
 
-    server.begin();
+    this->server.begin();
   });
 
   disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event)
@@ -30,6 +32,7 @@ MessageServer::~MessageServer()
 {
   delete this->host;
   delete this->fifo;
+  delete this->server;
 }
 
 
@@ -41,44 +44,63 @@ void MessageServer::subscribe(MessageParser* parser)
 
 void MessageServer::service()
 {
-  Message* message = receivePacket();
+  Message* message = receiveMessage();
 
-  // If no message was read, or the queue is full try to handle a message in the queue
+  if (message) {
+    // Iterate over MessageParsers until we find which one handles it
+    // Then have that one handle it
+
+    delete message;
+  }
 }
 
 
-class MessageServer()
+Message* MessageServer::receiveMessage()
 {
-public:
-  MessageServer(char* host, unsigned int port, char queueLength);
-  ~MessageServer();
+  WiFiClient client;
+  char byte, len; bool success;
+  if (client = this->server.available()) {
+    // First byte should be 0
+    success = readByte(client, &byte, 100);
+    if (byte != 0 || success == false) {
+      client.flush();
+      client.stop();
+      return nullptr;
+    }
 
-  void subscribe(MessageType type, void (*handler) ());
-  void unSubscribe(MessageType type);
+    // Second byte is length of transmission excluding start, stop, and length bytes.
+    success = readByte(client, &len, 100);
+    if (!success) {
+      client.flush();
+      client.stop();
+      return nullptr;
+    }
 
-  void service();
+    // Read all the data
+    char* data = new char[len];
+    success = readBytes(client, data, len, 100);
+    if (!success) {
+      delete data;
+      client.flush();
+      client.stop();
+      return nullptr;
+    }
 
-  bool messageReady();
-  Message nextMessage();
+    // Final byte should be 0
+    success = readByte(client, &byte, 100);
+    if (byte != 0 || success == false) {
+      delete data;
+      client.flush();
+      client.stop();
+      return nullptr;
+    }
 
-private:
-  char* host;
-  unsigned int port;
-
-  FIFO fifo;
-
-  Message* receivePacket(WiFiClient &client);
-};
-
-
-class MessageParser()
-{
-public:
-  MessageParser(bool (*checkFcn) (char* bytes, char length));
-  ~MessageParser();
-
-  bool checkMessage(Packet *packet);
-  Message parseMessage(Packet *packet);
-  bool handleMessage(Message* message);
-};
+    client.flush();
+    client.stop();
+    
+    Message* message = new Message(len, data);
+    return message;
+  }
+  return nullptr;
+}
 
