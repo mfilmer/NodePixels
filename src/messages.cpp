@@ -3,7 +3,6 @@
 
 Message::Message(char len, char* bytes)
 {
-  this->fullType = bytes[0];
   this->len = len;
   memcpy(this->bytes, bytes, len);
 }
@@ -15,21 +14,27 @@ Message::~Message()
 }
 
 
+char Message:fullType()
+{
+	return this->bytes[0];
+}
+
+
 char Message::readBit()
 {
-  return READBIT(this->fullType);
+  return READBIT(this->bytes[0]);
 }
 
 
 char Message::hsvBit()
 {
-  return HSVBIT(this->fullType);
+  return HSVBIT(this->bytes[0]);
 }
 
 
 char Message::type()
 {
-  return MSGBITS(this->fullType);
+  return MSGBITS(this->bytes[0]);
 }
 
 
@@ -44,3 +49,11 @@ char* Message::getBytes()
   return this->bytes;
 }
 
+
+char* Message::getData()
+{
+	if (this->len > 1) {
+		return this->bytes + 1;
+	}
+	return 0;
+}

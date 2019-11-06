@@ -42,9 +42,10 @@ public:
 
   char getLen();
   char* getBytes();
+  char* getData();
 
 private:
-	char fullType;
+  char fullType();
 	char len;
 	char* bytes;
 };

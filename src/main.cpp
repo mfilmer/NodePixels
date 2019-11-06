@@ -6,8 +6,13 @@
 #define NUM_LEDS 300
 #define DATA_PIN 3
 
+#define HOST "192.168.1.12"
+#define PORT 28924
+#define QUEUE_LEN 10
+
 #include "FastAnimations.h"
 #include "ledServer.h"
+#include "MessageHandler.cpp"
 
 /***** Private function prototypes *****/
 static void setWiFiEventHandlers();
@@ -16,6 +21,7 @@ static void setWiFiEventHandlers();
 /***** Global variables *****/
 static WiFiEventHandler gotIpEventHandler, disconnectedEventHandler;
 static WiFiServer server(28924);
+static MessageServer* messageServer;
 
 
 // Main setup function
@@ -31,9 +37,13 @@ void setup()
   // Uncomment if we need to change the wifi network settings
   //connectToWiFi();
 
-  setWiFiEventHandlers();
+  //setWiFiEventHandlers();
 
-  initLEDServer(NUM_LEDS);
+  //initLEDServer(NUM_LEDS);
+
+
+  messageServer = new MessageServer(HOST, PORT, QUEUE_LEN);
+  initializeAnimations(messageServer);
 }
 
 

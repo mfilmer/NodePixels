@@ -1,14 +1,14 @@
 #import "MessageHandler.h"
 
 
-MessageServer::MessageServer(char* host, unsigned int port, char queueLength)
+MessageServer::MessageServer(char* host, unsigned int port, char maxParsers)
 {
   unsigned int hostLen = strlen(host);
   this->host = new char[hostLen+1];
   strcpy(this->host, host);
   this->port = port;
 
-  this->fifo = new FIFO(queueLength);
+  this->parsers = new vector<MessageParser*>(queueLength);
 
   this->server = new WiFiServer(port);
 

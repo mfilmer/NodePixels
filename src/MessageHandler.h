@@ -6,10 +6,18 @@
 #include "WiFiUtil.h"
 
 
+#define MSG_HANDLED 0
+#define MSG_NOTHANDLED 1
+#define MSG_MALFORMED 2
+
+typedef char msgHandled_t
+
+
+
 class MessageServer()
 {
 public:
-  MessageServer(char* host, unsigned int port, char queueLength);
+  MessageServer(char* host, unsigned int port, char maxParsers);
   ~MessageServer();
 
   void subscribe(MessageParser* parser);
@@ -21,7 +29,7 @@ private:
   unsigned int port;
   WifiServer* server;
 
-  vector<MessageParser*>* fifo;
+  vector<MessageParser*>* parsers;
 
   Message* receiveMessage(WiFiClient &client);
 };
@@ -31,9 +39,8 @@ private:
 class MessageParser()
 {
 public:
-  virtual bool checkMessage(Message *message);
-  virtual Message parseMessage(Message *message);
-  virtual bool handleMessage(Message* message);
+  virtual mesHandled_t checkMessage(Message *message);
+  virtual msgHandled_t handleMessage(Message* message);
 };
 
 #endif
