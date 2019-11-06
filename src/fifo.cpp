@@ -7,11 +7,11 @@
 template <class T>
 FIFO<T>::FIFO(char  length)
 {
-	this.maxLength = length;
-	this.queue = new T*[length];
+  this.maxLength = length;
+  this.queue = new T*[length];
 
-	this.index = 0;
-	this.currentLength = 0;
+  this.index = 0;
+  this.currentLength = 0;
 }
 
 
@@ -22,7 +22,7 @@ FIFO<T>::FIFO(char  length)
 template <class T>
 FIFO<T>::~FIFO()
 {
-	delete this.queue;
+  delete this.queue;
 }
 
 
@@ -32,13 +32,13 @@ FIFO<T>::~FIFO()
 template <class T>
 bool FIFO<T>::push(T* data)
 {
-	if (!this.isFull()) {
-		char pushIndex = (this.index + this.currentLength) % this.maxLength;
-		this.queue[pushIndex] = data;
-		this.currentLength++;
-	} else {
-		return false;
-	}
+  if (!this.isFull()) {
+    char pushIndex = (this.index + this.currentLength) % this.maxLength;
+    this.queue[pushIndex] = data;
+    this.currentLength++;
+  } else {
+    return false;
+  }
 }
 
 
@@ -48,14 +48,14 @@ bool FIFO<T>::push(T* data)
 template <class T>
 T* FIFO<T>::pop()
 {
-	if (!this.isEmpty()) {
-		char popIndex = this.index;
-		this.index = (this.index + 1) % this.maxLength;
-		this.currentLength--;
-		return this.queue[popIndex];
-	} else {
-		return 0;
-	}
+  if (!this.isEmpty()) {
+    char popIndex = this.index;
+    this.index = (this.index + 1) % this.maxLength;
+    this.currentLength--;
+    return this.queue[popIndex];
+  } else {
+    return 0;
+  }
 }
 
 
@@ -65,7 +65,7 @@ T* FIFO<T>::pop()
 template <class T>
 bool FIFO<T>::isEmpty() const
 {
-	return (this.currentLength > 0);
+  return (this.currentLength > 0);
 }
 
 
@@ -75,7 +75,7 @@ bool FIFO<T>::isEmpty() const
 template <class T>
 bool FIFO<T>::isFull() const
 {
-	return (this.currentLength >= this.maxLength);
+  return (this.currentLength >= this.maxLength);
 }
 
 

@@ -6,21 +6,21 @@ template <class T>
 class FIFO
 {
 public:
-	FIFO(char length);
-	~FIFO();
+  FIFO(char length);
+  ~FIFO();
 
-	bool push(T* data);
-	T* pop();
+  bool push(T* data);
+  T* pop();
 
-	bool isEmpty() const;
-	bool isFull() const;
+  bool isEmpty() const;
+  bool isFull() const;
 
 private:
-	char maxLength;
-	char index;
-	char currentLength;
+  char maxLength;
+  char index;
+  char currentLength;
 
-	T *queue;
+  T *queue;
 };
 
 
